@@ -124,6 +124,51 @@ void setup() {
 }
 
 /*-----------------------------------------------------------------------------*/
+// FUNCIONES MOVIMIENTO
+
+void girar_90_izq() {
+  servo_right.write(180);
+  servo_left.write(180);
+  delay(1550);
+  servo_right.write(90);
+  servo_left.write(90);
+}
+
+void girar_45_izq() {
+  servo_right.write(180);
+  servo_left.write(180);
+  delay(775);
+  servo_right.write(90);
+  servo_left.write(90);
+}
+
+void girar_90_dch() {
+  servo_right.write(0);
+  servo_left.write(0);
+  delay(1550);
+  servo_right.write(90);
+  servo_left.write(90);
+}
+
+void girar_45_dch() {
+  servo_right.write(0);
+  servo_left.write(0);
+  delay(775);
+  servo_right.write(90);
+  servo_left.write(90);
+}
+
+void stop() {
+  servo_right.write(90);
+  servo_left.write(90);
+}
+
+void avanzar_recto() {  // 8 rojo a la derecha
+  servo_right.write(180);
+  servo_left.write(0);
+}
+
+/*-----------------------------------------------------------------------------*/
 
 void loop() {
   // --- Giro hacia adelante ---
