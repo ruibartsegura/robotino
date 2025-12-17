@@ -4,6 +4,8 @@
 #define SERVO_R_PIN 8     // Pin de señal del servo
 #define SERVO_L_PIN 9
 //#define TIEMPO_GIRO OBST_DIST00  // Tiempo en milisegundos (2 segundos)
+// LED rojo -- pin 33
+// LED azul -- pin 35
 
 Servo servo_right;  // Objeto servo
 Servo servo_left;
