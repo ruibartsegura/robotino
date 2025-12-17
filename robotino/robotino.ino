@@ -191,11 +191,13 @@ void loop() {
           case MOVE:
           {
             // Forward
+            avanzar_recto();
 
             // Check if an object has been detected
             object = check_dist();
             if (object.place != NINGUNO_DETECTA) {
               // Stop
+              stop();
               //state = OBJ_DECT;
               
               init_time = millis();
