@@ -3,12 +3,16 @@
 
 #define SERVO_R_PIN 8     // Pin de señal del servo
 #define SERVO_L_PIN 9
-//#define TIEMPO_GIRO OBST_DIST00  // Tiempo en milisegundos (2 segundos)
-// LED rojo -- pin 33
-// LED azul -- pin 35
 
 Servo servo_right;  // Objeto servo
 Servo servo_left;
+//#define TIEMPO_GIRO OBST_DIST00  // Tiempo en milisegundos (2 segundos)
+
+// LED rojo -- pin 33
+#define LED_R 33
+// LED azul -- pin 35
+#define LED_B 35
+
 
 #define ECHO_PIN_L 35
 #define TRIG_PIN_L 39
@@ -22,12 +26,13 @@ bool exercise_1 = false;
 bool exercise_2 = true;
 
 
+// Tipos de detección
 #define AMBOS_DETECTAN   0
 #define DERECHA_DETECTA  1
 #define IZQ_DETECTA      2
 #define NINGUNO_DETECTA  3
 
-
+// Estructura para guardar valores de una medición
 struct obj_detection {
     int place;
     float distR;
@@ -37,15 +42,6 @@ struct obj_detection {
 // To know where the object was detected and react according to it
 struct obj_detection object;
 
-bool rotar = false;
-bool rotar2 = false;
-bool avance = false;
-
-#define OBST_DIST 25
-#define WALL_DIST 15 
-
-int wall_count = 0;
-#define TOTAL_WALLS 4
 
 // States
 int state = 0;
@@ -62,7 +58,17 @@ int search_wall_state = 0;
 // Time vars
 float init_time = -1;
 
-bool end_avoid = false;
+int wall_count = 0;
+#define TOTAL_WALLS 4
+
+// Variables a cambiar
+#define OBST_DIST 25
+#define WALL_DIST 15 
+
+#define MOVING_TIME 1500
+
+
+
 /*-----------------------------------------------------------------------------*/
 char* get_action_name(int act_id){
     switch (act_id) {
@@ -170,6 +176,39 @@ void avanzar_recto() {  // 8 rojo a la derecha
   servo_left.write(0);
 }
 
+
+void retroceder_recto() {  // 8 rojo a la derecha
+  servo_right.write(0);
+  servo_left.write(180);
+}
+
+void aproximacion() {
+
+  while (object.distL >= WALL_DIST && object.distR >= WALL_DIST) {
+    object = check_dist();
+    avanzar_recto();
+
+    // Seguridad por falsa pared, si ambos dejan de detectar obj es que era un
+    // obstavulo y no pared porque la pared es lo sufucientemente alta para que 
+    // se vea siemrpe  
+    if (object.distL >= OBST_DIST && object.distR >= OBST_DIST) {
+      // retroceder porque se habrá acercado demasiado al obj
+      retroceder_recto();
+      delay(MOVING_TIME);
+
+      // esquivar a derecha
+      girar_45_dch();
+      avanzar_recto();
+      delay(MOVING_TIME);
+      girar_45_izq();
+
+      search_wall_state = MOVE; // Volver al caso por defecto
+     return;
+    }
+  }
+
+}
+
 /*-----------------------------------------------------------------------------*/
 
 void loop() {
@@ -178,9 +217,6 @@ void loop() {
   // servo_left.write(0);
 
   // check_dist();
-
-  delay(1000);
-
 
   if (exercise_1) {
 
@@ -208,9 +244,12 @@ void loop() {
 
               if (object.distL <= WALL_DIST || object.distR <= WALL_DIST) {
                 // Backward
+                retroceder_recto();
+                delay(MOVING_TIME);
+                search_wall_state = AVOID;
                 
               } else {
-                //search_wall_state = AVOID;
+                search_wall_state = AVOID;
               }
 
             }
@@ -222,28 +261,51 @@ void loop() {
             if (object.place == IZQ_DETECTA) {
               // AVOID
               // Rotar drch
+              girar_45_dch();
+              avanzar_recto();
+              delay(MOVING_TIME);
+              girar_45_izq();
+
               
             } else if (object.place == DERECHA_DETECTA) {
               // Comprobar der -> se puede encontrar pared
               // Esquivar der
+              girar_45_izq();
+              avanzar_recto();
+              delay(MOVING_TIME);
+              girar_45_dch();
+
             } else if (object.place == AMBOS_DETECTAN) {
               // Comprobar pared -> se puede encontrar pared
               // Esquivar izq
+              girar_45_dch();
+              avanzar_recto();
+              delay(MOVING_TIME);
+              girar_45_izq();
             }
 
-            if (end_avoid) {
-              object = check_dist();
+            // Despues de esquivar comporbamos si sigue el obstáculo
+            object = check_dist();
 
-              if (object.place != AMBOS_DETECTAN) {
-                if (object.distL <= WALL_DIST || object.distR <= WALL_DIST) {
-                  state = WALL_FINDED;
-                } else {
-                  // APROXIMARSE
-                }
-              } else if (object.place != NINGUNO_DETECTA) {
-                end_avoid = false;
+            // Si los dos sensores detectan es muro
+            if (object.place == AMBOS_DETECTAN) {
+              // Si está sufucientemente cerca es muro directamente
+              if (object.distL <= WALL_DIST && object.distR <= WALL_DIST) {
+                state = WALL_FINDED;
+
+              // Si no se acerca hasta la dist estipulada
+              } else {
+                // APROXIMARSE
+                aproximacion();
+                state = WALL_FINDED;
               }
+
+            // Si no detecta nada, vuelve a caminar recto proque esquivó el obst
+            } else if (object.place == NINGUNO_DETECTA) {
+              search_wall_state = MOVE;
             }
+
+            // Si no se da ninguno de los casos anteriores entonces vuelve a esquivar
             break;
           }
 
@@ -253,11 +315,14 @@ void loop() {
       case WALL_FINDED:
       {
         wall_count++;
-        //back
-        // turn
         if (wall_count == TOTAL_WALLS){
           state = END;
-        } else {
+
+        // Girar a la derecha para encarar siguiente pared
+        } else { 
+          retroceder_recto();
+          delay(MOVING_TIME);
+          girar_90_dch();
           state = SEARCHING_WALL;
         }
 
@@ -268,6 +333,8 @@ void loop() {
       {
         // Parar
         // Indicar
+        stop();
+
         break;
       }
     }
