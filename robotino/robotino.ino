@@ -65,7 +65,11 @@ int wall_count = 0;
 
 #define MOVING_TIME 1500
 
+// Cuantas mediciones hacen los ultrasonidos por cada vez q los llaman
+#define MEDICIONES 10
 
+// A partir de esta dist se ignora el valor, se considera fallo de medicion
+#define DISTANCIA_THRESHOLD 150
 
 /*-----------------------------------------------------------------------------*/
 char* get_action_name(int act_id){
@@ -95,15 +99,64 @@ float get_time_diff(long t0, long t1) {
 struct obj_detection check_dist() {
   struct obj_detection obj_det;
 
-  obj_det.distR = ultrasoundR.get_dist();
-  obj_det.distL = ultrasoundL.get_dist();
+  // Conseguir 10 valores
+  float distR[MEDICIONES];
+  float distL[MEDICIONES];
+  for (int x = 0; x < MEDICIONES; x++) {
+    distR[x] = ultrasoundR.get_dist();
+    distL[x] = ultrasoundL.get_dist();
+  }
 
-  Serial.print("distR = ");
+  // Hacer la media entre los valores que no se desvien mucho e ignorando max y min del resto
+  float sum_R;
+  float min_R = distR[0], max_R = distR[0];
+  int n_R = MEDICIONES;
+
+  float sum_L;
+  float min_L = distL[0], max_R = distL[0];
+  int n_L = MEDICIONES;
+
+
+
+  for (int i = 0; i < MEDICIONES; i++) {
+    if (distR[i] > 100) { // Ignorar valor
+      n_R--;
+      continue;
+    }
+
+    sum_R += arr[i];
+    if (distR[i] < min_R)
+      min_R = distR[i];
+    if (distR[i] > max_R)
+      max_R = distR[i];
+  }
+
+  for (int j = 0; j < MEDICIONES; j++) {
+    // Ignorar valor
+    if (distL[j] > 100) {
+      n_L--;
+      continue;
+    }
+
+    sum_L += arr[j];
+    if (distL[j] < min_L)
+      min_L = distL[j];
+    if (distL[j] > max_L)
+      max_L = distL[j];
+  }
+
+  // Si se han borrado todal las mediciones o solo queda el min y max volver a empezar
+  if (n_R <= 2 || n_L <= 2) 
+    check_dist();
+
+  obj_det.distR = (sum_R - min_R - max_R) / (n_R - 2);
+  obj_det.distL = (sum_L - min_L - max_L) / (n_L - 2);
+
+  Serial.print("Medicion de DERECHA: ");
   Serial.println(obj_det.distR);
 
-  Serial.print("distL = ");
+  Serial.print("Medicion de IZQUIERDA: ");
   Serial.println(obj_det.distL);
-
 
   if(obj_det.distL <= OBST_DIST && obj_det.distR <= OBST_DIST) {
     obj_det.place = AMBOS_DETECTAN;
