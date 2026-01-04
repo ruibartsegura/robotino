@@ -11,7 +11,7 @@ Servo servo_left;
 // LED rojo -- pin 33
 #define LED_R 33
 // LED azul -- pin 35
-#define LED_B 35
+#define LED_B 31
 
 
 #define ECHO_PIN_L 35
@@ -55,8 +55,6 @@ int search_wall_state = 0;
 #define OBJ_DECT 1
 #define AVOID 2
 
-// Time vars
-float init_time = -1;
 
 int wall_count = 0;
 #define TOTAL_WALLS 4
@@ -126,6 +124,10 @@ struct obj_detection check_dist() {
 /*-----------------------------------------------------------------------------*/
 void setup() {
   Serial.begin(9600);
+
+  // LEDS
+  pinMode(LED_R, OUTPUT);
+  pinMode(LED_B, OUTPUT);
 
   servo_right.attach(SERVO_R_PIN);
   servo_left.attach(SERVO_L_PIN);
@@ -236,11 +238,6 @@ void loop() {
             if (object.place != NINGUNO_DETECTA) {
               // Stop
               stop();
-              //state = OBJ_DECT;
-              
-              init_time = millis();
-              Serial.print("Objeto detectado en ");
-              Serial.println(get_action_name(object.place));
 
               if (object.distL <= WALL_DIST || object.distR <= WALL_DIST) {
                 // Backward
@@ -259,8 +256,9 @@ void loop() {
           case AVOID:
           {
             if (object.place == IZQ_DETECTA) {
-              // AVOID
-              // Rotar drch
+              digitalWrite(LED_B, HIGH);
+              digitalWrite(LED_R, LOW);
+
               girar_45_dch();
               avanzar_recto();
               delay(MOVING_TIME);
@@ -268,21 +266,26 @@ void loop() {
 
               
             } else if (object.place == DERECHA_DETECTA) {
-              // Comprobar der -> se puede encontrar pared
-              // Esquivar der
+              digitalWrite(LED_B, LOW);
+              digitalWrite(LED_R, HIGH);
+
               girar_45_izq();
               avanzar_recto();
               delay(MOVING_TIME);
               girar_45_dch();
 
             } else if (object.place == AMBOS_DETECTAN) {
-              // Comprobar pared -> se puede encontrar pared
-              // Esquivar izq
+              digitalWrite(LED_B, HIGH);
+              digitalWrite(LED_R, HIGH);
+
               girar_45_dch();
               avanzar_recto();
               delay(MOVING_TIME);
               girar_45_izq();
             }
+
+            digitalWrite(LED_B, LOW);
+            digitalWrite(LED_R, LOW);
 
             // Despues de esquivar comporbamos si sigue el obstáculo
             object = check_dist();
@@ -293,10 +296,23 @@ void loop() {
               if (object.distL <= WALL_DIST && object.distR <= WALL_DIST) {
                 state = WALL_FINDED;
 
+                for (int x = 0; x < 6; x++) {
+                  digitalWrite(LED_B, !digitalRead(LED_B));
+                  digitalWrite(LED_R, !digitalRead(LED_R));
+                  delay(300);
+                }
+
               // Si no se acerca hasta la dist estipulada
               } else {
                 // APROXIMARSE
                 aproximacion();
+
+                for (int x = 0; x < 6; x++) {
+                  digitalWrite(LED_B, !digitalRead(LED_B));
+                  digitalWrite(LED_R, !digitalRead(LED_R));
+                  delay(300);
+                }
+
                 state = WALL_FINDED;
               }
 
@@ -331,8 +347,10 @@ void loop() {
 
       case END:
       {
-        // Parar
-        // Indicar
+        digitalWrite(LED_R, !digitalRead(LED_R));
+        delay(500);
+        digitalWrite(LED_B, !digitalRead(LED_B));
+        delay(500);
         stop();
 
         break;
