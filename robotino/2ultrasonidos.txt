@@ -1,0 +1,48 @@
+    while (exercise_1) {
+      // Señal mando parar ejecucion
+      if (IrReceiver.decodedIRData.decodedRawData == 0x2DFA40) {
+        exercise_1 = false;
+        exercise_2 = false;
+        stop();
+      }
+
+      if (millis() - ej1_start_time >= EJ1_TIEMPO) {
+        exercise_1 = false;
+        stop();
+        digitalWrite(LED_R, LOW);
+        digitalWrite(LED_B, LOW);
+        break;
+      }
+
+      obj_det.distR = ultrasoundR.get_dist();
+      delay(150);
+      obj_det.distL = ultrasoundL.get_dist();
+      float dist_lat = ultrasoundLat.get_dist();
+
+      if (!follow_wall) {
+        if (obj_det.distL <= WALL_DIST && obj_det.distR <= WALL_DIST) {
+          girar_90_dch();
+          follow_wall = true;
+          digitalWrite(LED_B, HIGH);
+        } else if (obj_det.distR <= WALL_DIST && obj_det.distL > WALL_DIST) {
+          servo_right.write(180);
+          servo_left.write(180);
+        } else if (obj_det.distL <= WALL_DIST && obj_det.distR > WALL_DIST) {
+          servo_right.write(0);
+          servo_left.write(0);
+        } else {
+          avanzar_recto();
+          delay(1000);
+          girar_90_dch();
+        }
+      } else {
+        if (dist_lat <= 5) {
+          servo_right.write(0);
+          servo_left.write(0);
+        } else if (dist_lat >= 15) {
+          servo_right.write(180);
+          servo_left.write(180);
+        } else {
+          avanzar_recto();
+      }
+    }
