@@ -134,49 +134,32 @@ struct obj_detection check_dist() {
   float distL[MEDICIONES];
   for (int x = 0; x < MEDICIONES; x++) {
     distR[x] = ultrasoundR.get_dist();
+    delay(100);  // evitar colision
     distL[x] = ultrasoundL.get_dist();
   }
 
   // Hacer la media entre los valores que no se desvien mucho e ignorando max y min del resto
-  float sum_R;
-  float min_R = distR[0], max_R = distR[0];
-  int n_R = MEDICIONES;
+  float sum_R = 0, sum_L = 0;
+  float min_R = 9999, max_R = 0;
+  float min_L = 9999, max_L = 0;
+  int n_R = 0, n_L = 0;
 
-  float sum_L;
-  float min_L = distL[0], max_L = distL[0];
-  int n_L = MEDICIONES;
-
-  char arr[MEDICIONES];
   for (int i = 0; i < MEDICIONES; i++) {
-    if (distR[i] > 100) { // Ignorar valor
-      n_R--;
-      continue;
-    }
+    sum_R += distR[i];
+    if (distR[i] < min_R) min_R = distR[i];
+    if (distR[i] > max_R) max_R = distR[i];
+    n_R++;
 
-    sum_R += arr[i];
-    if (distR[i] < min_R)
-      min_R = distR[i];
-    if (distR[i] > max_R)
-      max_R = distR[i];
+    sum_L += distL[i];
+    if (distL[i] < min_L) min_L = distL[i];
+    if (distL[i] > max_L) max_L = distL[i];
+    n_L++;
   }
 
-  for (int j = 0; j < MEDICIONES; j++) {
-    // Ignorar valor
-    if (distL[j] > 100) {
-      n_L--;
-      continue;
-    }
-
-    sum_L += arr[j];
-    if (distL[j] < min_L)
-      min_L = distL[j];
-    if (distL[j] > max_L)
-      max_L = distL[j];
+  if (n_R <= 2 || n_L <= 2) {
+    obj_det.distR = 999;
+    obj_det.distL = 999;
   }
-
-  // Si se han borrado todal las mediciones o solo queda el min y max volver a empezar
-  if (n_R <= 2 || n_L <= 2) 
-    check_dist();
 
   obj_det.distR = (sum_R - min_R - max_R) / (n_R - 2);
   obj_det.distL = (sum_L - min_L - max_L) / (n_L - 2);
@@ -307,6 +290,7 @@ void loop() {
 
     struct obj_detection obj_det;
     bool follow_wall = false;
+    exercise_1 = true;
     while (exercise_1) {
       // Señal mando parar ejecucion
       if (IrReceiver.decodedIRData.decodedRawData == 0x2DFA40) {
@@ -323,8 +307,8 @@ void loop() {
         break;
       }
 
-      obj_det.distR = ultrasoundR.get_dist();
-      obj_det.distL = ultrasoundL.get_dist();
+      obj_det = check_dist();
+
       float dist_lat = ultrasoundLat.get_dist();
       if (obj_det.distL <= WALL_DIST && obj_det.distR <= WALL_DIST) {
         girar_90_dch();
